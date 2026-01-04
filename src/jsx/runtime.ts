@@ -4,8 +4,7 @@ import type { Component, Element } from '../types'
 
 import { Fragment } from '../components/fragment'
 import { createElement } from '../methods/create-element'
-
-import './types'
+export type { JSX } from './types'
 
 /* MAIN */
 

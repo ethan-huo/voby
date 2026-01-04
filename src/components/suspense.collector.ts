@@ -11,7 +11,15 @@ import { context, resolve } from '../oby'
 
 // Keeping track of all Suspense instances below it, needed in some cases
 
-export const SuspenseCollector = {
+type SuspenseCollectorAPI = {
+	create: () => SuspenseCollectorData
+	get: () => SuspenseCollectorData | undefined
+	wrap: <T>(
+		fn: (data: SuspenseCollectorData) => T,
+	) => ReturnType<typeof resolve>
+}
+
+export const SuspenseCollector: SuspenseCollectorAPI = {
 	create: (): SuspenseCollectorData => {
 		//TODO: Optimize this, some parts are unnecessarily slow, we just need a counter of active suspenses here really
 

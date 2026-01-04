@@ -10,12 +10,18 @@ declare global {
 
 /* MAIN */
 
-if (!isServer()) {
+const initSingleton = (): void => {
+	if (isServer()) return
+
 	const isLoaded = !!globalThis.VOBY
 
 	if (isLoaded) {
 		throw new Error('Voby has already been loaded')
-	} else {
-		globalThis.VOBY = true
 	}
+
+	globalThis.VOBY = true
 }
+
+/* EXPORT */
+
+export { initSingleton }

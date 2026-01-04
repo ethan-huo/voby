@@ -1,3 +1,7 @@
+/* IMPORT */
+
+import type { JSX } from './jsx/types'
+
 /* MAIN */
 
 type ArrayMaybe<T = unknown> = T[] | T

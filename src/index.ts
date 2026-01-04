@@ -14,8 +14,9 @@ import type {
 	StoreOptions,
 } from './types'
 
-import './singleton'
-import './jsx/types'
+import { initSingleton } from './singleton'
+
+initSingleton()
 
 /* EXPORT */
 

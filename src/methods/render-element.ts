@@ -1,5 +1,6 @@
 /* IMPORT */
 
+import type { JSX } from '../jsx/types'
 import type { Child, Component, Props, Ref } from '../types'
 
 import { SYMBOL_UNTRACKED_UNWRAPPED } from '../constants'

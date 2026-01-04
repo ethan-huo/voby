@@ -2,21 +2,23 @@
 
 /* GLOBALS */
 
-interface Element {
-	cloneNode(deep?: boolean): Element
-}
+declare global {
+	interface Element {
+		cloneNode(deep?: boolean): Element
+	}
 
-interface HTMLElement {
-	cloneNode(deep?: boolean): HTMLElement
-}
+	interface HTMLElement {
+		cloneNode(deep?: boolean): HTMLElement
+	}
 
-interface SVGElement {
-	cloneNode(deep?: boolean): SVGElement
+	interface SVGElement {
+		cloneNode(deep?: boolean): SVGElement
+	}
 }
 
 /* JSX */
 
-declare namespace JSX {
+export declare namespace JSX {
 	/* HELPERS */
 
 	type ArrayMaybe<T = unknown> = T[] | T

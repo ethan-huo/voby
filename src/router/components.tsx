@@ -1,3 +1,4 @@
+import type { JSX } from '../jsx/types'
 import type { FunctionMaybe, Child } from '../types'
 import type {
 	Location,

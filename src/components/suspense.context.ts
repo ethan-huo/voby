@@ -10,7 +10,13 @@ import { context, resolve } from '../oby'
 
 /* MAIN */
 
-export const SuspenseContext = {
+type SuspenseContextAPI = {
+	create: () => SuspenseData
+	get: () => SuspenseData | undefined
+	wrap: <T>(fn: (data: SuspenseData) => T) => ReturnType<typeof resolve>
+}
+
+export const SuspenseContext: SuspenseContextAPI = {
 	create: (): SuspenseData => {
 		const count = $(0)
 		const active = useMemo(() => !!count())
