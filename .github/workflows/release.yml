@@ -1,0 +1,36 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - run: bun install
+
+      - run: bun run build
+
+      - name: Push to latest branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Create orphan branch with only dist + necessary files
+          git checkout --orphan latest
+          git reset
+          
+          # Add only what's needed for package consumption
+          git add -f dist/
+          git add package.json readme.md license
+          
+          # Optional: add src/ for debugging
+          git add src/
+          
+          git commit -m "build: $(git rev-parse --short HEAD@{1})"
+          git push -f origin latest
