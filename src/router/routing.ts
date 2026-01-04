@@ -27,8 +27,10 @@ import {
 	useEffect,
 	useCleanup,
 	useResolved,
+	get,
 } from '../'
 import { createContext } from '../methods/create-context'
+import { flatten } from '../utils/lang'
 import { normalizeIntegration } from './integration'
 import {
 	createMemoObject,
@@ -71,7 +73,7 @@ export const useResolvedPath = (
 	path: () => string,
 ): ObservableReadonly<string | undefined> => {
 	const route = useRoute()
-	return useMemo(() => route.resolvePath(path()))
+	return useMemo(() => route.resolvePath(get(path())))
 }
 
 export const useHref = (
@@ -197,7 +199,9 @@ export function createBranches(
 	stack: Route[] = [],
 	branches: Branch[] = [],
 ): Branch[] {
-	const routeDefs = asArray(useResolved(routeDef, true))
+	const routeDefs = flatten(asArray(useResolved(routeDef, true))).map((def) =>
+		useResolved(def, true),
+	)
 
 	for (let i = 0, len = routeDefs.length; i < len; i++) {
 		const def = routeDefs[i]

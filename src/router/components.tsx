@@ -11,7 +11,8 @@ import type {
 	RouterIntegration,
 } from './types'
 
-import { If, useMemo } from '../'
+import { ErrorBoundary, If, get, useEffect, useMemo } from '../'
+import { isFunction } from '../utils/lang'
 import { pathIntegration } from './integration'
 import {
 	createBranches,
@@ -52,7 +53,9 @@ export const Router = (props: RouterProps) => {
 
 	return (
 		<RouterContextProvider value={routerState}>
-			{props.children}
+			<RouteContextProvider value={routerState.base}>
+				{props.children}
+			</RouteContextProvider>
 		</RouterContextProvider>
 	)
 }
@@ -60,6 +63,9 @@ export const Router = (props: RouterProps) => {
 export type RoutesProps = {
 	base?: string
 	children: Child
+	errorFallback?:
+		| Child
+		| ((props: { error: Error; reset: () => void }) => Child)
 }
 
 export const Routes = (props: RoutesProps) => {
@@ -77,6 +83,15 @@ export const Routes = (props: RoutesProps) => {
 	const matches = useMemo(() =>
 		getRouteMatches(branches(), router.location.pathname),
 	)
+
+	let resetError: (() => void) | undefined
+
+	useEffect(() => {
+		// Reset error boundary on navigation so routing keeps working.
+		router.location.pathname
+		resetError?.()
+		resetError = undefined
+	})
 
 	if (router.out) {
 		router.out.matches.push(
@@ -122,11 +137,34 @@ export const Routes = (props: RoutesProps) => {
 		}),
 	)
 
+	const fallback =
+		props.errorFallback ||
+		(({ error, reset }) => (
+			<div style={{ padding: '1rem' }}>
+				<h2 style={{ color: 'crimson', margin: '0 0 0.5rem 0' }}>
+					Something went wrong
+				</h2>
+				<pre style={{ color: 'crimson', whiteSpace: 'pre-wrap' }}>
+					{String(error)}
+				</pre>
+				<button onClick={reset} style={{ marginTop: '0.75rem' }}>
+					Try again
+				</button>
+			</div>
+		))
+
 	return (
 		<If when={() => routeStates() && root}>
 			{(route: () => RouteContext) => (
 				<RouteContextProvider value={route()}>
-					{() => route().outlet()}
+					<ErrorBoundary
+						fallback={(props) => {
+							resetError = props.reset
+							return isFunction(fallback) ? fallback(props) : fallback
+						}}
+					>
+						{() => route().outlet()}
+					</ErrorBoundary>
 				</RouteContextProvider>
 			)}
 		</If>
@@ -189,9 +227,9 @@ export const Outlet = () => {
 
 export type AnchorProps = Omit<
 	JSX.AnchorHTMLAttributes<HTMLAnchorElement>,
-	'state'
+	'state' | 'href'
 > & {
-	href: string
+	href: FunctionMaybe<string>
 	replace?: boolean
 	noScroll?: boolean
 	state?: unknown
@@ -211,7 +249,7 @@ export function A(props: AnchorProps) {
 		state,
 		...rest
 	} = props
-	const to = useResolvedPath(() => href)
+	const to = useResolvedPath(() => get(href))
 	const location = useLocation()
 	const isActive = useMemo(() => {
 		const to_ = to()
@@ -225,7 +263,7 @@ export function A(props: AnchorProps) {
 		<a
 			link
 			{...rest}
-			href={useHref(to)() ?? href}
+			href={useHref(to)() ?? get(href)}
 			state={JSON.stringify(state)}
 			class={() => [
 				{
