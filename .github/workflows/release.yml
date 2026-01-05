@@ -27,7 +27,7 @@ jobs:
           
           # Add only what's needed for package consumption
           git add -f dist/
-          git add package.json readme.md license
+          git add package.json readme.md license docs/
           
           # Optional: add src/ for debugging
           git add src/
