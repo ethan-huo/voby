@@ -1,0 +1,1 @@
+{"version":3,"file":"use-idle-callback.d.ts","sourceRoot":"","sources":["../../src/hooks/use-idle-callback.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EAAE,QAAQ,EAAE,aAAa,EAAE,eAAe,EAAE,MAAM,UAAU,CAAA;AAOxE,eAAO,MAAM,eAAe,GAC3B,UAAU,eAAe,CAAC,mBAAmB,CAAC,EAC9C,UAAU,aAAa,CAAC,kBAAkB,CAAC,KACzC,QAOF,CAAA"}

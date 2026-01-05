@@ -1,0 +1,1 @@
+{"version":3,"file":"use-abort-signal.js","sourceRoot":"","sources":["../../src/hooks/use-abort-signal.ts"],"names":[],"mappings":"AAAA,YAAY;AAIZ,OAAO,EAAE,kBAAkB,EAAE,MAAM,+BAA+B,CAAA;AAElE,UAAU;AAEV,MAAM,CAAC,MAAM,cAAc,GAAG,CAC7B,UAAmC,EAAE,EACvB,EAAE;IAChB,OAAO,kBAAkB,CAAC,OAAO,CAAC,CAAC,MAAM,CAAA;AAC1C,CAAC,CAAA"}

@@ -1,0 +1,1 @@
+{"version":3,"file":"suspense.d.ts","sourceRoot":"","sources":["../../src/components/suspense.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EAAE,KAAK,EAAE,aAAa,EAAE,kBAAkB,EAAE,MAAM,UAAU,CAAA;AAWxE,eAAO,MAAM,QAAQ,GAAI,+BAItB;IACF,IAAI,CAAC,EAAE,aAAa,CAAC,OAAO,CAAC,CAAA;IAC7B,QAAQ,CAAC,EAAE,KAAK,CAAA;IAChB,QAAQ,EAAE,KAAK,CAAA;CACf,KAAG,kBAAkB,CAAC,KAAK,CAQ3B,CAAA"}
