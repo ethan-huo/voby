@@ -1,19 +1,18 @@
-import { render } from 'voby'
+import { render, lazy, Suspense } from 'voby'
 import { Router, Routes, Route, A } from 'voby/router'
 
-import Benchmark from './demos/benchmark'
-import Boxes from './demos/boxes'
-import Clock from './demos/clock'
-import Counter from './demos/counter'
-import Creation from './demos/creation'
-import EmojiCounter from './demos/emoji_counter'
-import HMR from './demos/hmr'
-import HTML from './demos/html'
-import Hyperscript from './demos/hyperscript'
-import Spiral from './demos/spiral'
-import StoreCounter from './demos/store_counter'
-import Triangle from './demos/triangle'
-import UIBench from './demos/uibench'
+const Benchmark = lazy(() => import('./demos/benchmark'))
+const Boxes = lazy(() => import('./demos/boxes'))
+const Clock = lazy(() => import('./demos/clock'))
+const Counter = lazy(() => import('./demos/counter'))
+const Creation = lazy(() => import('./demos/creation'))
+const EmojiCounter = lazy(() => import('./demos/emoji_counter'))
+const HMR = lazy(() => import('./demos/hmr'))
+const HTML = lazy(() => import('./demos/html'))
+const Hyperscript = lazy(() => import('./demos/hyperscript'))
+const Spiral = lazy(() => import('./demos/spiral'))
+const StoreCounter = lazy(() => import('./demos/store_counter'))
+const Triangle = lazy(() => import('./demos/triangle'))
 
 const demos = [
 	{ path: '/benchmark', name: 'Benchmark', component: Benchmark },
@@ -29,7 +28,6 @@ const demos = [
 	{ path: '/spiral', name: 'Spiral', component: Spiral },
 	{ path: '/store_counter', name: 'Store Counter', component: StoreCounter },
 	{ path: '/triangle', name: 'Triangle', component: Triangle },
-	{ path: '/uibench', name: 'UIBench', component: UIBench },
 	{
 		path: '/error',
 		name: 'Error (throws)',
@@ -64,12 +62,14 @@ const App = () => {
 				))}
 			</nav>
 			<main style={{ padding: '1rem' }}>
-				<Routes>
-					<Route path="/" element={<Home />} />
-					{demos.map((demo) => (
-						<Route path={demo.path} element={<demo.component />} />
-					))}
-				</Routes>
+				<Suspense fallback={<div>Loading...</div>}>
+					<Routes>
+						<Route path="/" element={<Home />} />
+						{demos.map((demo) => (
+							<Route path={demo.path} element={<demo.component />} />
+						))}
+					</Routes>
+				</Suspense>
 			</main>
 		</Router>
 	)
