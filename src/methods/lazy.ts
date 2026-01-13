@@ -20,13 +20,19 @@ export const lazy = <P = {}>(fetcher: LazyFetcher<P>): LazyResult<P> => {
 	const fetcherOnce = once(fetcher)
 
 	const component = (props: P): ObservableReadonly<Child> => {
-		const resource = useResource(fetcherOnce)
+		const resourceTuple = useResource(fetcherOnce)
+		const resource = resourceTuple[0]
 
 		return useMemo(() => {
-			return useResolved(resource, ({ pending, error, value }) => {
-				if (pending) return
+			return useResolved(resource, (state) => {
+				const pending = state.pending
+				const error = state.error
+				const value = state.value
 
+				if (pending) return
 				if (error) throw error
+
+				if (!value) return
 
 				const component = 'default' in value ? value.default : value
 
@@ -37,9 +43,13 @@ export const lazy = <P = {}>(fetcher: LazyFetcher<P>): LazyResult<P> => {
 
 	component.preload = (): Promise<void> => {
 		return new Promise<void>((resolve, reject) => {
-			const resource = useResource(fetcherOnce)
+			const resourceTuple = useResource(fetcherOnce)
+			const resource = resourceTuple[0]
 
-			useResolved(resource, ({ pending, error }) => {
+			useResolved(resource, (state) => {
+				const pending = state.pending
+				const error = state.error
+
 				if (pending) return
 
 				if (error) return reject(error)

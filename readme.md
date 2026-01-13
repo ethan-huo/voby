@@ -1,47 +1,45 @@
 # Voby
 
-A high-performance framework with fine-grained observable/signal-based reactivity for building rich applications.
+A high-performance framework with fine-grained observable-based reactivity for rich client apps.
 
 ## Why Voby
 
-- **No VDOM**: direct DOM updates, no diffing
-- **No stale closures**: functions always run fresh
-- **No hooks rules**: hooks are plain functions, nest/call conditionally
-- **No dependency arrays**: dependencies tracked automatically
-- **No key prop**: just map arrays or use `For` with unique values
-- **Local-first**: no SSR/hydration/streaming (focused on rich client apps)
+- No VDOM: direct DOM updates, no diffing
+- No stale closures: functions always run fresh
+- No hooks rules: hooks are plain functions, call anywhere
+- No dependency arrays: automatic tracking
+- No key prop: map arrays or use `For` with unique values
+- Local-first: no SSR/hydration/streaming (by design)
 
 ## Mental Model
 
-### Observables are Functions
+### Observables are functions
 
 ```tsx
 import { $, get } from 'voby';
 
-const count = $(0);       // Create observable
-count();                  // Read: 0
-count(1);                 // Write: 1
-count(v => v + 1);        // Update: 2
-get(count);               // Unwrap: 2 (works on any value)
+const count = $(0);       // create observable
+count();                  // read: 0
+count(1);                 // write: 1
+count(v => v + 1);        // update: 2
+get(count);               // unwrap: 2 (works on any value)
 ```
 
-### Reactivity is Automatic
+### Reactivity is automatic
 
 ```tsx
 import { $, useEffect, useMemo } from 'voby';
 
 const a = $(1);
 const b = $(2);
-const sum = useMemo(() => a() + b());  // Auto-tracks a, b
+const sum = useMemo(() => a() + b());
 
 useEffect(() => {
-  console.log(sum());  // Re-runs when sum changes
+  console.log(sum());
 });
 ```
 
-### Components Return Children
-
-Components are functions that return `Child` (nodes, strings, arrays, functions).
+### Components return children
 
 ```tsx
 const Counter = () => {
@@ -71,115 +69,84 @@ const App = () => {
 render(<App />, document.getElementById('app')!);
 ```
 
-## Core API
-
-### Reactivity
-
-| API | Description |
-|-----|-------------|
-| `$(value)` | Create observable |
-| `get(value)` | Unwrap observable/function to raw value |
-| `useEffect(fn)` | Run side effect when dependencies change |
-| `useMemo(fn)` | Create derived readonly observable |
-| `useCleanup(fn)` | Register cleanup when computation disposes |
-| `untrack(fn)` | Execute without tracking dependencies |
-| `batch(fn)` | Batch updates (useful for async) |
-
-### Rendering
-
-| API | Description |
-|-----|-------------|
-| `render(child, parent)` | Mount component, returns disposer |
-| `createElement(tag, props, ...children)` | Create element (used by JSX) |
-| `Dynamic` | Dynamic component: `<Dynamic component={tag}>` |
-
-### Context
-
-`createContext` returns a `[Provider, use]` pair:
+## Router (voby/router)
 
 ```tsx
-// Factory pattern (per-provider instance)
-const [Provider, useCounter] = createContext((props: { value?: number }) => ({
-  count: $(props.value ?? 0)
-}));
+import { lazy, render } from 'voby';
+import { Router, Routes, Route, A, Outlet, Navigate } from 'voby/router';
+import { useParams, useNavigate, useLocation, useSearchParams, useRouteData } from 'voby/router';
 
-// Shared value pattern (singleton)
-const [Provider, useConfig] = createContext({ theme: $<'light'|'dark'>('light') });
+const Home = lazy(() => import('./pages/Home'));
+const Users = lazy(() => import('./pages/Users'));
+const User = lazy(() => import('./pages/User'));
 
-// Usage
-<Provider value={1}>
-  {() => {
-    const { count } = useCounter();
-    return <button onClick={() => count(v => v + 1)}>{count}</button>;
-  }}
-</Provider>
-```
+render(
+  <Router>
+    <nav>
+      <A href="/">Home</A>
+      <A href="/users" end>Users</A>
+    </nav>
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/users" element={<Users />} />
+      <Route path="/users/:id" element={<User />} />
+      <Route path="/*" element={<NotFound />} />
+    </Routes>
+  </Router>,
+  document.getElementById('app')!
+);
 
-### Control Flow Components
+const DashboardLayout = () => (
+  <div class="dashboard">
+    <Sidebar />
+    <Outlet />
+  </div>
+);
 
-Use these instead of JS control flow for reactive updates:
+<Route path="/dashboard" element={<DashboardLayout />}>
+  <Route path="/" element={<Overview />} />
+  <Route path="/settings" element={<Settings />} />
+</Route>
 
-```tsx
-import { If, For } from 'voby';
-
-// Conditional
-<If when={visible}>
-  <p>Shown when truthy</p>
-</If>
-
-<If when={user} fallback={<p>Loading...</p>}>
-  {(u) => <p>Hello {u().name}</p>}
-</If>
-
-// List (requires unique values)
-<For values={items} fallback={<p>Empty</p>}>
-  {(item, index) => <li>{item}</li>}
-</For>
-
-```
-
-### Composition with `renderElement`
-
-Base UI-style composition via `render` prop:
-
-```tsx
-import { renderElement } from 'voby';
-
-const DialogTrigger = (props) => {
-  const open = $(false);
-  return renderElement('button', props, {
-    state: { open },
-    props: {
-      onClick: () => open(v => !v),
-      'data-open': () => open() ? '' : undefined
-    }
-  });
+const UserPage = () => {
+  const params = useParams();
+  const user = useResource(() => fetchUser(params.id));
+  return <div>{user().value?.name}</div>;
 };
 
-// Usage - render prop can be tag, function, or DOM node
-<DialogTrigger render="a" href="#" />
-<DialogTrigger render={(props, state) => <CustomButton {...props} />} />
+const navigate = useNavigate();
+navigate('/users/123');
+
+const location = useLocation();
+const [searchParams, setSearchParams] = useSearchParams();
+setSearchParams({ page: 2, sort: 'name' });
+
+<Route path="/old" element={<Navigate href="/new" />} />
 ```
 
-- Event handlers merge: external runs first, call `event.preventVobyHandler()` to skip internal
-- `class`, `style`, `ref` are merged
+See `docs/router.md` for full router docs and edge cases.
 
-### Async & Suspense
+## Async & Suspense
 
 ```tsx
 import { useResource, Suspense, lazy } from 'voby';
 
-// Resource (auto-tracks, triggers Suspense)
-const resource = useResource(() => fetch('/api').then(r => r.json()));
-// resource().pending, resource().error, resource().value
-
-// Lazy loading
+const [resource] = useResource(() => fetch('/api').then(r => r.json()));
 const LazyComponent = lazy(() => import('./Component'));
 
-// Suspense boundary
 <Suspense fallback={<Spinner />}>
   <LazyComponent />
 </Suspense>
+```
+
+## Stores (Deep Reactivity)
+
+```tsx
+import { store } from 'voby';
+
+const state = store({ user: { name: 'John' }, items: [] });
+state.user.name = 'Jane';
+state.items.push('item');
 ```
 
 ## JSX Differences from React
@@ -194,115 +161,149 @@ const LazyComponent = lazy(() => import('./Component'));
 - `dangerouslySetInnerHTML` supported (not innerHTML)
 - Delegated events: `click`, `input`, `keydown`, `keyup`, `mousedown`, `mouseup`, `dblclick`, `focusin`, `focusout`, `beforeinput`
 
-## Stores (Deep Reactivity)
+## API Index (All Public API)
+
+### Methods
+
+| API | Notes |
+| --- | --- |
+| `$` | create observable |
+| `get` | unwrap observable/function |
+| `batch` | batch updates |
+| `createContext` | context factory |
+| `createElement` | JSX factory |
+| `h` | hyperscript helper |
+| `hmr` | hot module helper |
+| `html` | tagged template JSX alternative |
+| `isBatching` | batching state |
+| `isObservable` | observable check |
+| `isServer` | server env check |
+| `isStore` | store check |
+| `lazy` | code-split component |
+| `mergeProps` | merge props (composition) |
+| `mergePropsN` | merge props (N inputs) |
+| `mergeRefs` | merge refs |
+| `render` | mount app |
+| `renderElement` | base UI composition |
+| `renderToString` | client-side string render |
+| `resolve` | normalize functions to memos |
+| `store` | deep reactive store |
+| `template` | static template optimization |
+| `tick` | flush effects |
+| `untrack` | read without tracking |
+
+### Components
+
+| API | Notes |
+| --- | --- |
+| `Dynamic` | dynamic component/element |
+| `ErrorBoundary` | error isolation |
+| `For` | keyed list rendering |
+| `Fragment` | JSX fragment |
+| `If` | reactive conditional |
+| `KeepAlive` | component cache |
+| `Portal` | render elsewhere |
+| `Suspense` | async boundary |
+
+### Hooks
+
+| API | Notes |
+| --- | --- |
+| `useAbortController` | AbortController helper |
+| `useAbortSignal` | AbortSignal helper |
+| `useAnimationFrame` | RAF scheduler |
+| `useAnimationLoop` | RAF loop |
+| `useBoolean` | boolean observable |
+| `useCleanup` | cleanup on dispose |
+| `useDisposed` | reactive disposed flag |
+| `useEffect` | reactive effect |
+| `useEventListener` | DOM event helper |
+| `useFetch` | fetch wrapped as resource |
+| `useIdleCallback` | idle callback |
+| `useIdleLoop` | idle loop |
+| `useInterval` | interval helper |
+| `useMemo` | derived observable |
+| `useMicrotask` | microtask helper |
+| `usePromise` | promise resource |
+| `useReadonly` | readonly view |
+| `useResolved` | unwrap values/tuples |
+| `useResource` | async resource with mutate/refetch |
+| `useRoot` | isolated root |
+| `useSelector` | optimized selector |
+| `useSuspended` | Suspense state |
+| `useTimeout` | timeout helper |
+| `useUntracked` | return untracked function |
+
+### Types
+
+| API | Notes |
+| --- | --- |
+| `EffectOptions` | effect options |
+| `FunctionMaybe` | value or function |
+| `MemoOptions` | memo options |
+| `Observable` | writable observable |
+| `ObservableLike` | observable-like |
+| `ObservableReadonly` | readonly observable |
+| `ObservableReadonlyLike` | readonly observable-like |
+| `ObservableMaybe` | observable or value |
+| `ObservableOptions` | observable options |
+| `Resource` | resource shape |
+| `StoreOptions` | store options |
+| `JSX` | JSX types (from runtime) |
+
+### JSX Runtime
+
+| API | Notes |
+| --- | --- |
+| `jsx` / `jsxs` / `jsxDEV` | JSX runtime exports |
+| `Fragment` | JSX fragment |
+
+## Key APIs (Differences Worth Knowing)
+
+### `useResource`
+
+A Solid-style resource with `mutate`/`refetch`, tracked source, and Suspense integration.
 
 ```tsx
-import { store, isStore } from 'voby';
+const [todos, { mutate, refetch }] = useResource(getTodos);
 
-const state = store({ user: { name: 'John' }, items: [] });
-state.user.name = 'Jane';  // Reactive write
-state.items.push('item');  // Reactive array mutation
+mutate(prev => (prev ? prev.concat(newTodo) : [newTodo]));
+refetch();
 ```
 
-## Router
+- `mutate` updates value without fetching
+- `refetch` re-runs fetcher (optionally with custom info)
+- pending state can trigger `Suspense`
+
+See `docs/resource.md` for behavior details.
+
+### `renderElement`
+
+Base UI composition with render-prop support and merged props/handlers.
 
 ```tsx
-import { lazy } from 'voby';
-import { Router, Routes, Route, A, Outlet, Navigate } from 'voby/router';
-import { useParams, useNavigate, useLocation, useSearchParams, useRouteData } from 'voby/router';
+import { renderElement, $ } from 'voby';
 
-const Home = lazy(() => import('./pages/Home'));
-const Users = lazy(() => import('./pages/Users'));
-const User = lazy(() => import('./pages/User'));
-
-// Basic routing
-render(
-  <Router>
-    <nav>
-      <A href="/">Home</A>
-      <A href="/users" end>Users</A>  {/* end: exact match only */}
-    </nav>
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/users" element={<Users />} />
-      <Route path="/users/:id" element={<User />} />
-      <Route path="/*" element={<NotFound />} />  {/* Wildcard */}
-    </Routes>
-  </Router>,
-  document.getElementById('app')!
-);
-
-// Nested routes with layout
-<Route path="/dashboard" element={<DashboardLayout />}>
-  <Route path="/" element={<Overview />} />
-  <Route path="/settings" element={<Settings />} />
-</Route>
-
-const DashboardLayout = () => (
-  <div class="dashboard">
-    <Sidebar />
-    <Outlet />  {/* Child routes render here */}
-  </div>
-);
-
-// Dynamic params
-const User = () => {
-  const params = useParams();  // { id: '123' }
-  const resource = useResource(() => fetchUser(params.id));
-  return <div>{resource().value?.name}</div>;
+const DialogTrigger = (props) => {
+  const open = $(false);
+  return renderElement('button', props, {
+    state: { open },
+    props: {
+      onClick: () => open(v => !v),
+      'data-open': () => (open() ? '' : undefined)
+    }
+  });
 };
-
-// Navigation
-const navigate = useNavigate();
-navigate('/users/123');
-navigate('/login', { replace: true });
-navigate(-1);  // Back
-
-// Location & search params
-const location = useLocation();  // { pathname, search, hash, state }
-const [searchParams, setSearchParams] = useSearchParams();
-setSearchParams({ page: 2, sort: 'name' });  // ?page=2&sort=name
-
-// Data functions (parallel loading)
-function UserData({ params }) {
-  return useResource(() => fetchUser(params.id));
-}
-<Route path="/users/:id" element={<User />} data={UserData} />
-
-const User = () => {
-  const user = useRouteData();
-  return <h1>{user().value?.name}</h1>;
-};
-
-// Programmatic redirect
-<Route path="/old-path" element={<Navigate href="/new-path" />} />
-
-// Config-based routing
-const routes = [
-  { path: '/', component: Home },
-  { path: '/users/:id', component: User, children: [
-    { path: '/', component: UserProfile },
-    { path: '/settings', component: UserSettings },
-  ]},
-];
-const Routes = useRoutes(routes);
 ```
 
-See [docs/router.md](docs/router.md) for `A` props, `useMatch`, and edge cases.
+### `Suspense`
 
-## Other Utilities
+Local-only Suspense. No SSR/hydration. Use for async boundaries and lazy components.
 
-| API | Description |
-|-----|-------------|
-| `Portal` | Render children in different DOM location |
-| `ErrorBoundary` | Catch errors with fallback |
-| `KeepAlive` | Cache component instances |
-| `template(fn)` | Optimize static component instantiation |
-| `html\`...\`` | Tagged template alternative to JSX |
-| `isObservable(v)` | Check if value is observable |
-| `isServer()` | Check if running server-side |
+## Docs Index
 
-## Detailed Reference
-
-- [API Reference](docs/api-reference.md) - Complete methods, components, hooks, types
-- [Router](docs/router.md) - Nested routes, data functions, all primitives
+- `docs/index.md`
+- `docs/api-reference.md`
+- `docs/hooks.md`
+- `docs/resource.md`
+- `docs/router.md`

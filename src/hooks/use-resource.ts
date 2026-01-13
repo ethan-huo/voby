@@ -6,9 +6,15 @@ import type {
 	ResourceStaticPending,
 	ResourceStaticRejected,
 	ResourceStaticResolved,
+	ResourceStaticIdle,
 	ResourceStatic,
 	ResourceFunction,
 	Resource,
+	ResourceSource,
+	ResourceFetcher,
+	ResourceOptions,
+	ResourceReturn,
+	ResourceActions,
 } from '../types'
 
 import { SuspenseManager } from '../components/suspense.manager'
@@ -17,7 +23,8 @@ import { useReadonly } from '../hooks/use-readonly'
 import { useRenderEffect } from '../hooks/use-render-effect'
 import { get } from '../methods/get'
 import { $ } from '../methods/S'
-import { assign, castError, isPromise } from '../utils/lang'
+import { untrack } from '../methods/untrack'
+import { assign, castError, isFunction, isPromise } from '../utils/lang'
 
 /* MAIN */
 
@@ -25,22 +32,47 @@ import { assign, castError, isPromise } from '../utils/lang'
 //TODO: Option for returning the resource as a store, where also the returned value gets wrapped in a store
 //FIXME: SSR demo: toggling back and forth between /home and /loader is buggy, /loader gets loaded with no data, which is wrong
 
-export const useResource = <T>(
-	fetcher: () => ObservableMaybe<PromiseMaybe<T>>,
-): Resource<T> => {
-	const pending = $(true)
+export const useResource = <T, S, R>(
+	pSource: ResourceSource<S> | ResourceFetcher<S, T, R>,
+	pFetcher?: ResourceFetcher<S, T, R> | ResourceOptions<T, S>,
+	pOptions?: ResourceOptions<T, S>,
+): ResourceReturn<T, R> => {
+	let source: ResourceSource<S>
+	let fetcher: ResourceFetcher<S, T, R>
+	let options: ResourceOptions<T, S>
+
+	if (typeof pFetcher === 'function') {
+		source = pSource as ResourceSource<S>
+		fetcher = pFetcher as ResourceFetcher<S, T, R>
+		options = (pOptions || {}) as ResourceOptions<T, S>
+	} else {
+		source = true as ResourceSource<S>
+		fetcher = pSource as ResourceFetcher<S, T, R>
+		options = (pFetcher || {}) as ResourceOptions<T, S>
+	}
+
+	const pending = $(false)
 	const error = $<Error>()
 	const value = $<T>()
 	const latest = $<T>()
+	const hasInitialValue = 'initialValue' in options
+
+	if (hasInitialValue) {
+		const initialValue = options.initialValue as T
+		value(() => initialValue)
+		latest(() => initialValue)
+	}
 
 	const { suspend, unsuspend } = new SuspenseManager()
 	const resourcePending: ResourceStaticPending<T> = {
 		pending: true,
-		get value(): undefined {
-			return void suspend()
+		get value(): T | undefined {
+			return value() ?? void suspend()
 		},
 		get latest(): T | undefined {
-			return latest() ?? void suspend()
+			const latestValue = latest()
+			if (latestValue !== undefined) return latestValue
+			return value() ?? void suspend()
 		},
 	}
 	const resourceRejected: ResourceStaticRejected = {
@@ -61,7 +93,16 @@ export const useResource = <T>(
 			return value()!
 		},
 		get latest(): T {
-			return value()!
+			return latest() ?? value()!
+		},
+	}
+	const resourceIdle: ResourceStaticIdle<T> = {
+		pending: false,
+		get value(): T | undefined {
+			return value()
+		},
+		get latest(): T | undefined {
+			return latest()
 		},
 	}
 	const resourceFunction: ResourceFunction<T> = {
@@ -70,64 +111,138 @@ export const useResource = <T>(
 		value: () => resource().value,
 		latest: () => resource().latest,
 	}
-	const resource = $<ResourceStatic<T>>(resourcePending)
+	const resource = $<ResourceStatic<T>>(
+		hasInitialValue ? resourceResolved : resourceIdle,
+	)
 
-	useRenderEffect(() => {
-		const disposed = useCheapDisposed()
+	let disposed = (): boolean => false
+	let fetchId = 0
 
-		const onPending = (): void => {
-			pending(true)
-			error(undefined)
-			value(undefined)
-			resource(resourcePending)
+	const setIdle = (): void => {
+		pending(false)
+		error(undefined)
+		resource(value() === undefined ? resourceIdle : resourceResolved)
+		unsuspend()
+	}
+
+	const setPending = (keepValue: boolean): void => {
+		pending(true)
+		error(undefined)
+		if (!keepValue) value(undefined)
+		resource(resourcePending)
+	}
+
+	const setResolved = (result: T): void => {
+		if (disposed()) return
+
+		pending(false)
+		error(undefined)
+		value(() => result)
+		latest(() => result)
+		resource(resourceResolved)
+	}
+
+	const setRejected = (exception: unknown): void => {
+		if (disposed()) return
+
+		pending(false)
+		error(castError(exception))
+		value(undefined)
+		resource(resourceRejected)
+	}
+
+	const finalize = (id: number): void => {
+		if (disposed()) return
+		if (id !== fetchId) return
+
+		unsuspend()
+	}
+
+	const runFetch = (
+		refetching: R | boolean = false,
+		sourceOverride?: S,
+	): void => {
+		const lookup = sourceOverride ?? get(source as ObservableMaybe<S>)
+
+		if (lookup == null || lookup === false) {
+			setIdle()
+			return
 		}
 
-		const onResolve = (result: T): void => {
-			if (disposed()) return
+		const keepValue = value() !== undefined
+		const currentId = (fetchId += 1)
 
-			pending(false)
-			error(undefined)
-			value(() => result)
-			latest(() => result)
+		setPending(keepValue)
+
+		try {
+			const result = untrack(() =>
+				fetcher(lookup as S, {
+					value: value(),
+					refetching,
+				}),
+			)
+			const resolved = get(result as ObservableMaybe<PromiseMaybe<T>>)
+
+			if (isPromise(resolved)) {
+				resolved
+					.then((value) => {
+						if (currentId !== fetchId) return
+						setResolved(value)
+					})
+					.catch((error) => {
+						if (currentId !== fetchId) return
+						setRejected(error)
+					})
+					.finally(() => finalize(currentId))
+			} else {
+				setResolved(resolved as T)
+				finalize(currentId)
+			}
+		} catch (error: unknown) {
+			setRejected(error)
+			finalize(currentId)
+		}
+	}
+
+	const mutate = (
+		next: T | undefined | ((prev: T | undefined) => T | undefined),
+	): T | undefined => {
+		const prev = value()
+		const resolved = isFunction(next)
+			? (next as (prev: T | undefined) => T | undefined)(prev)
+			: next
+
+		pending(false)
+		error(undefined)
+		if (resolved === undefined) {
+			value(undefined)
+			latest(undefined)
+			resource(resourceIdle)
+		} else {
+			value(() => resolved)
+			latest(() => resolved)
 			resource(resourceResolved)
 		}
 
-		const onReject = (exception: unknown): void => {
-			if (disposed()) return
+		return resolved
+	}
 
-			pending(false)
-			error(castError(exception))
-			value(undefined)
-			latest(undefined)
-			resource(resourceRejected)
-		}
+	const refetch = (info?: R | boolean): void => {
+		runFetch(info ?? true)
+	}
 
-		const onFinally = (): void => {
-			if (disposed()) return
+	const actions: ResourceActions<T | undefined, R> = {
+		mutate,
+		refetch,
+	}
 
-			unsuspend()
-		}
+	useRenderEffect(() => {
+		disposed = useCheapDisposed()
 
-		const fetch = (): void => {
-			try {
-				const value = get(fetcher())
+		const lookup = get(source as ObservableMaybe<S>)
 
-				if (isPromise(value)) {
-					onPending()
-
-					value.then(onResolve, onReject).finally(onFinally)
-				} else {
-					onResolve(value)
-					onFinally()
-				}
-			} catch (error: unknown) {
-				onReject(error)
-				onFinally()
-			}
-		}
-
-		fetch()
+		runFetch(false, lookup)
 	})
 
-	return assign(useReadonly(resource), resourceFunction)
+	return [assign(useReadonly(resource), resourceFunction), actions]
 }

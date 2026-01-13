@@ -1,6 +1,6 @@
 /* IMPORT */
 
-import type { FunctionMaybe, Resource } from '../types'
+import type { FunctionMaybe, ResourceReturn } from '../types'
 
 import { useAbortSignal } from '../hooks/use-abort-signal'
 import { useResolved } from '../hooks/use-resolved'
@@ -11,7 +11,7 @@ import { useResource } from '../hooks/use-resource'
 export const useFetch = (
 	request: FunctionMaybe<RequestInfo>,
 	init?: FunctionMaybe<RequestInit>,
-): Resource<Response> => {
+): ResourceReturn<Response, unknown> => {
 	return useResource(() => {
 		return useResolved([request, init], (request, init = {}) => {
 			const signal = useAbortSignal(init.signal || [])

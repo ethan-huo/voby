@@ -161,7 +161,7 @@ type Ref<T = unknown> = (value: T) => void
 type ResourceStaticPending<T = unknown> = {
 	pending: true
 	error?: never
-	value?: never
+	value?: T
 	latest?: T
 }
 
@@ -179,10 +179,18 @@ type ResourceStaticResolved<T = unknown> = {
 	latest: T
 }
 
+type ResourceStaticIdle<T = unknown> = {
+	pending: false
+	error?: never
+	value?: T
+	latest?: T
+}
+
 type ResourceStatic<T = unknown> =
 	| ResourceStaticPending<T>
 	| ResourceStaticRejected
 	| ResourceStaticResolved<T>
+	| ResourceStaticIdle<T>
 
 type ResourceFunction<T = unknown> = {
 	pending(): boolean
@@ -193,6 +201,34 @@ type ResourceFunction<T = unknown> = {
 
 type Resource<T = unknown> = ObservableReadonly<ResourceStatic<T>> &
 	ResourceFunction<T>
+
+type ResourceSource<S = unknown> = FunctionMaybe<S | false | null | undefined>
+
+type ResourceFetcherInfo<T = unknown, R = unknown> = {
+	value: T | undefined
+	refetching: R | boolean
+}
+
+type ResourceFetcher<S = unknown, T = unknown, R = unknown> = (
+	source: S,
+	info: ResourceFetcherInfo<T, R>,
+) => ObservableMaybe<PromiseMaybe<T>>
+
+type ResourceOptions<T = unknown, S = unknown> = {
+	initialValue?: T
+}
+
+type ResourceMutator<T = unknown> = (value: T | ((prev: T) => T)) => T
+
+type ResourceActions<T = unknown, R = unknown> = {
+	mutate: ResourceMutator<T>
+	refetch: (info?: R | boolean) => void
+}
+
+type ResourceReturn<T = unknown, R = unknown> = [
+	Resource<T>,
+	ResourceActions<T | undefined, R>,
+]
 
 type StoreOptions = import('oby').StoreOptions
 
@@ -298,9 +334,17 @@ export type {
 	ResourceStaticPending,
 	ResourceStaticRejected,
 	ResourceStaticResolved,
+	ResourceStaticIdle,
 	ResourceStatic,
 	ResourceFunction,
 	Resource,
+	ResourceSource,
+	ResourceFetcherInfo,
+	ResourceFetcher,
+	ResourceOptions,
+	ResourceMutator,
+	ResourceActions,
+	ResourceReturn,
 	StoreOptions,
 	Styles,
 	SuspenseCollectorData,

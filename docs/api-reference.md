@@ -437,16 +437,25 @@ useResolved([$(1), $(2)], (a, b) => a + b); // 3
 
 ### `useResource`
 
-Wrap function result in resource. Handles async, errors, triggers Suspense.
+Solid-style resource with mutate/refetch. Handles async, errors, and Suspense.
 
 ```ts
-function useResource<T>(
-  fetcher: () => ObservableMaybe<PromiseMaybe<T>>
-): Resource<T>;
+function useResource<T, R = unknown>(
+  fetcher: ResourceFetcher<true, T, R>,
+  options?: ResourceOptions<T, true>
+): [Resource<T>, ResourceActions<T | undefined, R>];
+
+function useResource<T, S, R = unknown>(
+  source: ResourceSource<S>,
+  fetcher: ResourceFetcher<S, T, R>,
+  options?: ResourceOptions<T, S>
+): [Resource<T>, ResourceActions<T | undefined, R>];
 ```
 
 ```tsx
-const resource = useResource(() => fetch("/api").then((r) => r.json()));
+const [resource, { mutate, refetch }] = useResource(() =>
+  fetch("/api").then((r) => r.json())
+);
 
 // Reading (triggers Suspense/ErrorBoundary)
 resource().pending; // boolean
@@ -459,14 +468,22 @@ resource.pending();
 resource.error();
 resource.value();
 resource.latest();
+
+// Manual control
+mutate((prev) => prev ?? []);
+refetch();
 ```
+
+Note: `mutate(undefined)` clears the resource and returns it to an idle state.
 
 ### `usePromise`
 
 Wrap promise in resource. Uses `useResource` internally.
 
 ```ts
-function usePromise<T>(promise: FunctionMaybe<Promise<T>>): Resource<T>;
+function usePromise<T>(
+  promise: FunctionMaybe<Promise<T>>
+): [Resource<T>, ResourceActions<T | undefined, unknown>];
 ```
 
 ### `useRoot`
@@ -584,7 +601,7 @@ Fetch with auto-abort and resource wrapping.
 function useFetch(
   request: FunctionMaybe<RequestInfo>,
   init?: FunctionMaybe<RequestInit>
-): Resource<Response>;
+): [Resource<Response>, ResourceActions<Response | undefined, unknown>];
 ```
 
 ---
@@ -636,14 +653,20 @@ type StoreOptions = {
 
 ```ts
 type ResourceStatic<T> =
-  | { pending: true; error?: never; value?: never; latest?: T }
+  | { pending: true; error?: never; value?: T; latest?: T }
   | { pending: false; error: Error; value?: never; latest?: never }
-  | { pending: false; error?: never; value: T; latest: T };
+  | { pending: false; error?: never; value: T; latest: T }
+  | { pending: false; error?: never; value?: T; latest?: T };
 
 type Resource<T> = ObservableReadonly<ResourceStatic<T>> & {
   pending(): boolean;
   error(): Error | undefined;
   value(): T | undefined;
   latest(): T | undefined;
+};
+
+type ResourceActions<T, R = unknown> = {
+  mutate: (value: T | undefined | ((prev: T | undefined) => T | undefined)) => T | undefined;
+  refetch: (info?: R | boolean) => void;
 };
 ```

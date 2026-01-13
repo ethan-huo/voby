@@ -1,6 +1,6 @@
 /* IMPORT */
 
-import type { FunctionMaybe, Resource } from '../types'
+import type { FunctionMaybe, ResourceReturn } from '../types'
 
 import { useResource } from '../hooks/use-resource'
 import { get } from '../methods/get'
@@ -9,6 +9,6 @@ import { get } from '../methods/get'
 
 export const usePromise = <T>(
 	promise: FunctionMaybe<Promise<T>>,
-): Resource<T> => {
+): ResourceReturn<T, unknown> => {
 	return useResource(() => get(promise))
 }
