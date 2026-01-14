@@ -4,6 +4,11 @@
     "jsx": "react-jsx",
     "jsxImportSource": "voby",
     "module": "ESNext",
+    "baseUrl": ".",
+    "paths": {
+      "voby/jsx-runtime": ["src/jsx/runtime.ts"],
+      "voby/jsx-dev-runtime": ["src/jsx/runtime.ts"]
+    },
     "lib": [
       "ES2022",
       "DOM",
