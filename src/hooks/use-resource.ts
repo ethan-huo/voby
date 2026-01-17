@@ -32,22 +32,34 @@ import { assign, castError, isFunction, isPromise } from '../utils/lang'
 //TODO: Option for returning the resource as a store, where also the returned value gets wrapped in a store
 //FIXME: SSR demo: toggling back and forth between /home and /loader is buggy, /loader gets loaded with no data, which is wrong
 
-export const useResource = <T, S, R>(
-	pSource: ResourceSource<S> | ResourceFetcher<S, T, R>,
-	pFetcher?: ResourceFetcher<S, T, R> | ResourceOptions<T, S>,
+type UseResource = {
+	<T, R = unknown>(
+		fetcher: ResourceFetcher<unknown, T, R>,
+		options?: ResourceOptions<T, unknown>,
+	): ResourceReturn<T, R>
+	<T, S, R = unknown>(
+		source: ResourceSource<S>,
+		fetcher: ResourceFetcher<NonNullable<S>, T, R>,
+		options?: ResourceOptions<T, S>,
+	): ResourceReturn<T, R>
+}
+
+export const useResource = (<T, S, R>(
+	pSource: ResourceSource<S> | ResourceFetcher<NonNullable<S>, T, R>,
+	pFetcher?: ResourceFetcher<NonNullable<S>, T, R> | ResourceOptions<T, S>,
 	pOptions?: ResourceOptions<T, S>,
 ): ResourceReturn<T, R> => {
 	let source: ResourceSource<S>
-	let fetcher: ResourceFetcher<S, T, R>
+	let fetcher: ResourceFetcher<NonNullable<S>, T, R>
 	let options: ResourceOptions<T, S>
 
 	if (typeof pFetcher === 'function') {
 		source = pSource as ResourceSource<S>
-		fetcher = pFetcher as ResourceFetcher<S, T, R>
+		fetcher = pFetcher as ResourceFetcher<NonNullable<S>, T, R>
 		options = (pOptions || {}) as ResourceOptions<T, S>
 	} else {
 		source = true as ResourceSource<S>
-		fetcher = pSource as ResourceFetcher<S, T, R>
+		fetcher = pSource as ResourceFetcher<NonNullable<S>, T, R>
 		options = (pFetcher || {}) as ResourceOptions<T, S>
 	}
 
@@ -176,7 +188,7 @@ export const useResource = <T, S, R>(
 
 		try {
 			const result = untrack(() =>
-				fetcher(lookup as S, {
+				fetcher(lookup as NonNullable<S>, {
 					value: value(),
 					refetching,
 				}),
@@ -245,4 +257,4 @@ export const useResource = <T, S, R>(
 	})
 
 	return [assign(useReadonly(resource), resourceFunction), actions]
-}
+}) as UseResource

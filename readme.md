@@ -275,7 +275,41 @@ refetch();
 - `refetch` re-runs fetcher (optionally with custom info)
 - pending state can trigger `Suspense`
 
+Best practice: use a source gate that returns `null`/`undefined`/`false` to
+skip fetching; the fetcher receives the non-null value.
+
+```tsx
+const [todos] = useResource(
+  () => user() ?? null,
+  (u) => fetchTodos(u.id),
+);
+```
+
+Common mistake: calling `useResource` with a source and then making the
+fetcher accept `null` just to satisfy types. Keep the gate in the source and
+handle empty state in UI instead.
+
 See `docs/resource.md` for behavior details.
+
+### `createContext`
+
+Context should be initialized per Provider. Prefer factory form:
+
+```tsx
+const [AppProvider, useApp] = createContext((props: { initial?: number }) => ({
+  count: $(props.initial ?? 0),
+}));
+```
+
+If you need to inject a value, use the explicit value prop:
+
+```tsx
+const [AppProvider, useApp] = createContext<{ theme: Observable<string> }>();
+// <AppProvider value={{ theme: $("light") }}>{...}
+```
+
+Common mistake: creating state outside and passing it as `createContext(state)`.
+That runs immediately at module load and defeats per-Provider initialization.
 
 ### `renderElement`
 

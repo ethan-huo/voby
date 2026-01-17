@@ -86,9 +86,6 @@ Create context provider and hook pair.
 
 ```ts
 // Shared value (singleton)
-function createContext<T>(init: T): [ContextProvider, () => T | undefined];
-
-// Factory (per-provider instance)
 function createContext<T, P>(
   init: (props: P) => T
 ): [ContextProvider<P>, () => T | undefined];
@@ -100,8 +97,12 @@ const [Provider, useCounter] = createContext((props: { initial?: number }) => ({
   count: $(props.initial ?? 0),
 }));
 
-// Shared pattern
-const [Provider, useTheme] = createContext({ theme: $("light") });
+// Value-in (explicit)
+const [Provider, useTheme] = createContext<{ theme: Observable<string> }>();
+// <Provider value={{ theme: $("light") }}>{...}
+
+// Note: context values must be non-null. If you need "empty" state, wrap it:
+// value={{ user: null }}
 ```
 
 ### `createElement` / `h`
@@ -441,13 +442,13 @@ Solid-style resource with mutate/refetch. Handles async, errors, and Suspense.
 
 ```ts
 function useResource<T, R = unknown>(
-  fetcher: ResourceFetcher<true, T, R>,
-  options?: ResourceOptions<T, true>
+  fetcher: ResourceFetcher<unknown, T, R>,
+  options?: ResourceOptions<T, unknown>
 ): [Resource<T>, ResourceActions<T | undefined, R>];
 
 function useResource<T, S, R = unknown>(
   source: ResourceSource<S>,
-  fetcher: ResourceFetcher<S, T, R>,
+  fetcher: ResourceFetcher<NonNullable<S>, T, R>,
   options?: ResourceOptions<T, S>
 ): [Resource<T>, ResourceActions<T | undefined, R>];
 ```
@@ -475,6 +476,7 @@ refetch();
 ```
 
 Note: `mutate(undefined)` clears the resource and returns it to an idle state.
+Note: when using a source, return `null`/`undefined`/`false` to skip fetching; the fetcher receives the non-null source value.
 
 ### `usePromise`
 

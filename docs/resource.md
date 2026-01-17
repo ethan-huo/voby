@@ -10,7 +10,7 @@ const [resource, actions] = useResource(source, fetcher, options)
 ```
 
 - `source` is reactive. When it is `null`, `undefined`, or `false`, the resource becomes idle and does not fetch.
-- `fetcher` receives `(sourceValue, info)` where `info` includes the previous value and `refetching` flag.
+- `fetcher` receives a non-null `sourceValue` plus `info` (previous value + `refetching` flag).
 
 ## Resource shape
 
@@ -46,4 +46,11 @@ const [todos, { mutate, refetch }] = useResource(getTodos)
 
 mutate(prev => (prev ? prev.concat(newTodo) : [newTodo]))
 refetch()
+```
+
+```tsx
+const [todos] = useResource(
+  () => user() ?? null,
+  (u) => fetchTodos(u.id),
+)
 ```

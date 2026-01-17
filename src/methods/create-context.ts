@@ -12,22 +12,15 @@ function createContext<T extends {}>(
 	init?: undefined,
 	name?: string,
 ): [(props: { value: T; children: Child }) => Child, () => T]
-function createContext<T>(
-	init: T,
-	name?: string,
-): [(props: { children: Child }) => Child, () => T]
-function createContext<T, P>(
+function createContext<T extends {}, P>(
 	init: (props: P) => T,
 	name?: string,
 ): [(props: P & { children: Child }) => Child, () => T]
-function createContext<T, P = {}>(
-	init?: T | ((props: P) => T),
+function createContext<T extends {}, P = {}>(
+	init?: (props: P) => T,
 	name?: string,
 ): [(props: P & { children: Child }) => Child, () => T] {
 	const symbol = Symbol()
-	const hasDefault =
-		arguments.length > 0 && !isFunction(init) && init !== undefined
-	const defaultValue: T | undefined = hasDefault ? (init as T) : undefined
 	const contextName = typeof name === 'string' ? name : undefined
 
 	const ProviderInternal = ({
@@ -46,18 +39,20 @@ function createContext<T, P = {}>(
 		const { children, ...rest } = props || ({} as P & { children: Child })
 		const value = isFunction(init)
 			? init(rest as P)
-			: hasDefault
-				? (init as T)
-				: (props as unknown as { value: T }).value
+			: (props as unknown as { value: T }).value
+		if (isNil(value)) {
+			throw new Error(
+				'Context Provider value must be non-null. Wrap nulls inside your value object instead.',
+			)
+		}
 
 		return ProviderInternal({ value, children })
 	}
 
 	const use = (): T => {
 		const valueContext = context(symbol) as T | undefined
-		const value = isNil(valueContext) ? defaultValue : valueContext
-
-		if (isNil(value) && !hasDefault) {
+		const value = valueContext
+		if (isNil(value)) {
 			if (contextName) {
 				throw new Error(
 					`Missing ${contextName}Provider. Wrap your tree with <${contextName}Provider>.`,
