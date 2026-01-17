@@ -38,7 +38,7 @@ export function useResource<T, R = unknown>(
 ): ResourceReturn<T, R>
 export function useResource<T, S, R = unknown>(
 	source: ResourceSource<S>,
-	fetcher: ResourceFetcher<S, T, R>,
+	fetcher: ResourceFetcher<NoInfer<S>, T, R>,
 	options?: ResourceOptions<T, S>,
 ): ResourceReturn<T, R>
 export function useResource<T, S, R>(

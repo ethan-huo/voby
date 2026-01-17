@@ -4,7 +4,7 @@ import type { Child } from '../types'
 
 import { resolve } from '../methods/resolve'
 import { context } from '../oby'
-import { isFunction, isNil } from '../utils/lang'
+import { castError, isFunction, isNil } from '../utils/lang'
 
 /* MAIN */
 
@@ -37,13 +37,22 @@ function createContext<T extends {}, P = {}>(
 
 	const Provider = (props: P & { children: Child }): Child => {
 		const { children, ...rest } = props || ({} as P & { children: Child })
-		const value = isFunction(init)
-			? init(rest as P)
-			: (props as unknown as { value: T }).value
-		if (isNil(value)) {
-			throw new Error(
-				'Context Provider value must be non-null. Wrap nulls inside your value object instead.',
-			)
+		let value: T
+		try {
+			value = isFunction(init)
+				? init(rest as P)
+				: (props as unknown as { value: T }).value
+			if (isNil(value)) {
+				throw new Error(
+					'Context Provider value must be non-null. Wrap nulls inside your value object instead.',
+				)
+			}
+		} catch (error: unknown) {
+			const contextLabel = contextName
+				? `${contextName}Provider init error`
+				: 'Context Provider init error'
+			const message = `${contextLabel}: ${castError(error).message}`
+			return resolve(message)
 		}
 
 		return ProviderInternal({ value, children })

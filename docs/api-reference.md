@@ -87,7 +87,8 @@ Create context provider and hook pair.
 ```ts
 // Shared value (singleton)
 function createContext<T, P>(
-  init: (props: P) => T
+  init: (props: P) => T,
+  name?: string
 ): [ContextProvider<P>, () => T | undefined];
 ```
 
@@ -103,6 +104,8 @@ const [Provider, useTheme] = createContext<{ theme: Observable<string> }>();
 
 // Note: context values must be non-null. If you need "empty" state, wrap it:
 // value={{ user: null }}
+
+// If init throws, Provider renders an error message instead of children.
 ```
 
 ### `createElement` / `h`

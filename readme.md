@@ -311,6 +311,8 @@ const [AppProvider, useApp] = createContext<{ theme: Observable<string> }>();
 Common mistake: creating state outside and passing it as `createContext(state)`.
 That runs immediately at module load and defeats per-Provider initialization.
 
+If init throws, Provider renders an error message instead of children.
+
 ### `renderElement`
 
 Base UI composition with render-prop support and merged props/handlers.
