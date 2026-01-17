@@ -33,14 +33,14 @@ import { assign, castError, isFunction, isPromise } from '../utils/lang'
 //FIXME: SSR demo: toggling back and forth between /home and /loader is buggy, /loader gets loaded with no data, which is wrong
 
 type UseResource = {
-	<T, R = unknown>(
-		fetcher: ResourceFetcher<unknown, T, R>,
-		options?: ResourceOptions<T, unknown>,
-	): ResourceReturn<T, R>
 	<T, S, R = unknown>(
 		source: ResourceSource<S>,
 		fetcher: ResourceFetcher<NonNullable<S>, T, R>,
 		options?: ResourceOptions<T, S>,
+	): ResourceReturn<T, R>
+	<T, R = unknown>(
+		fetcher: ResourceFetcher<unknown, T, R>,
+		options?: ResourceOptions<T, unknown>,
 	): ResourceReturn<T, R>
 }
 
