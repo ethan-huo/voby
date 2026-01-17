@@ -202,7 +202,7 @@ type ResourceFunction<T = unknown> = {
 type Resource<T = unknown> = ObservableReadonly<ResourceStatic<T>> &
 	ResourceFunction<T>
 
-type ResourceSource<S = unknown> = FunctionMaybe<S | false | null | undefined>
+type ResourceSource<S = unknown> = FunctionMaybe<S>
 
 type ResourceFetcherInfo<T = unknown, R = unknown> = {
 	value: T | undefined

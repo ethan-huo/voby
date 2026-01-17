@@ -35,7 +35,7 @@ import { assign, castError, isFunction, isPromise } from '../utils/lang'
 type UseResource = {
 	<T, S, R = unknown>(
 		source: ResourceSource<S>,
-		fetcher: ResourceFetcher<NonNullable<S>, T, R>,
+		fetcher: ResourceFetcher<S, T, R>,
 		options?: ResourceOptions<T, S>,
 	): ResourceReturn<T, R>
 	<T, R = unknown>(
@@ -45,21 +45,21 @@ type UseResource = {
 }
 
 export const useResource = (<T, S, R>(
-	pSource: ResourceSource<S> | ResourceFetcher<NonNullable<S>, T, R>,
-	pFetcher?: ResourceFetcher<NonNullable<S>, T, R> | ResourceOptions<T, S>,
+	pSource: ResourceSource<S> | ResourceFetcher<S, T, R>,
+	pFetcher?: ResourceFetcher<S, T, R> | ResourceOptions<T, S>,
 	pOptions?: ResourceOptions<T, S>,
 ): ResourceReturn<T, R> => {
 	let source: ResourceSource<S>
-	let fetcher: ResourceFetcher<NonNullable<S>, T, R>
+	let fetcher: ResourceFetcher<S, T, R>
 	let options: ResourceOptions<T, S>
 
 	if (typeof pFetcher === 'function') {
 		source = pSource as ResourceSource<S>
-		fetcher = pFetcher as ResourceFetcher<NonNullable<S>, T, R>
+		fetcher = pFetcher as ResourceFetcher<S, T, R>
 		options = (pOptions || {}) as ResourceOptions<T, S>
 	} else {
 		source = true as ResourceSource<S>
-		fetcher = pSource as ResourceFetcher<NonNullable<S>, T, R>
+		fetcher = pSource as ResourceFetcher<S, T, R>
 		options = (pFetcher || {}) as ResourceOptions<T, S>
 	}
 
@@ -176,11 +176,6 @@ export const useResource = (<T, S, R>(
 	): void => {
 		const lookup = sourceOverride ?? get(source as ObservableMaybe<S>)
 
-		if (lookup == null || lookup === false) {
-			setIdle()
-			return
-		}
-
 		const keepValue = value() !== undefined
 		const currentId = (fetchId += 1)
 
@@ -188,7 +183,7 @@ export const useResource = (<T, S, R>(
 
 		try {
 			const result = untrack(() =>
-				fetcher(lookup as NonNullable<S>, {
+				fetcher(lookup as S, {
 					value: value(),
 					refetching,
 				}),

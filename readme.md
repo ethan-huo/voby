@@ -275,19 +275,19 @@ refetch();
 - `refetch` re-runs fetcher (optionally with custom info)
 - pending state can trigger `Suspense`
 
-Best practice: use a source gate that returns `null`/`undefined`/`false` to
-skip fetching; the fetcher receives the non-null value.
+Best practice: when using a source, let it reflect real state. If it can be
+`null`/`undefined`, the fetcher should handle that case explicitly.
 
 ```tsx
 const [todos] = useResource(
-  () => user() ?? null,
-  (u) => fetchTodos(u.id),
+  () => user(),
+  (u) => (u ? fetchTodos(u.id) : []),
 );
 ```
 
-Common mistake: calling `useResource` with a source and then making the
-fetcher accept `null` just to satisfy types. Keep the gate in the source and
-handle empty state in UI instead.
+Common mistake: relying on implicit gating. `useResource` always re-runs the
+fetcher when the source changes; if your source can be empty, handle it in the
+fetcher.
 
 See `docs/resource.md` for behavior details.
 

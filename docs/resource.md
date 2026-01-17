@@ -9,8 +9,8 @@ const [resource, actions] = useResource(fetcher, options)
 const [resource, actions] = useResource(source, fetcher, options)
 ```
 
-- `source` is reactive. When it is `null`, `undefined`, or `false`, the resource becomes idle and does not fetch.
-- `fetcher` receives a non-null `sourceValue` plus `info` (previous value + `refetching` flag).
+- `source` is reactive. The fetcher runs whenever the source changes.
+- `fetcher` receives the source value plus `info` (previous value + `refetching` flag).
 
 ## Resource shape
 
@@ -50,7 +50,7 @@ refetch()
 
 ```tsx
 const [todos] = useResource(
-  () => user() ?? null,
-  (u) => fetchTodos(u.id),
+  () => user(),
+  (u) => (u ? fetchTodos(u.id) : []),
 )
 ```

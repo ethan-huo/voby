@@ -448,7 +448,7 @@ function useResource<T, R = unknown>(
 
 function useResource<T, S, R = unknown>(
   source: ResourceSource<S>,
-  fetcher: ResourceFetcher<NonNullable<S>, T, R>,
+  fetcher: ResourceFetcher<S, T, R>,
   options?: ResourceOptions<T, S>
 ): [Resource<T>, ResourceActions<T | undefined, R>];
 ```
@@ -476,7 +476,8 @@ refetch();
 ```
 
 Note: `mutate(undefined)` clears the resource and returns it to an idle state.
-Note: when using a source, return `null`/`undefined`/`false` to skip fetching; the fetcher receives the non-null source value.
+Note: when using a source, the fetcher runs on every source change; if the
+source can be empty, handle that case in the fetcher.
 
 ### `usePromise`
 
