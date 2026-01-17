@@ -32,23 +32,20 @@ import { assign, castError, isFunction, isPromise } from '../utils/lang'
 //TODO: Option for returning the resource as a store, where also the returned value gets wrapped in a store
 //FIXME: SSR demo: toggling back and forth between /home and /loader is buggy, /loader gets loaded with no data, which is wrong
 
-type UseResource = {
-	<T, S, R = unknown>(
-		source: ResourceSource<S>,
-		fetcher: ResourceFetcher<S, T, R>,
-		options?: ResourceOptions<T, S>,
-	): ResourceReturn<T, R>
-	<T, R = unknown>(
-		fetcher: ResourceFetcher<unknown, T, R>,
-		options?: ResourceOptions<T, unknown>,
-	): ResourceReturn<T, R>
-}
-
-export const useResource = (<T, S, R>(
+export function useResource<T, R = unknown>(
+	fetcher: ResourceFetcher<unknown, T, R>,
+	options?: ResourceOptions<T, unknown>,
+): ResourceReturn<T, R>
+export function useResource<T, S, R = unknown>(
+	source: ResourceSource<S>,
+	fetcher: ResourceFetcher<S, T, R>,
+	options?: ResourceOptions<T, S>,
+): ResourceReturn<T, R>
+export function useResource<T, S, R>(
 	pSource: ResourceSource<S> | ResourceFetcher<S, T, R>,
 	pFetcher?: ResourceFetcher<S, T, R> | ResourceOptions<T, S>,
 	pOptions?: ResourceOptions<T, S>,
-): ResourceReturn<T, R> => {
+): ResourceReturn<T, R> {
 	let source: ResourceSource<S>
 	let fetcher: ResourceFetcher<S, T, R>
 	let options: ResourceOptions<T, S>
@@ -252,4 +249,4 @@ export const useResource = (<T, S, R>(
 	})
 
 	return [assign(useReadonly(resource), resourceFunction), actions]
-}) as UseResource
+}
