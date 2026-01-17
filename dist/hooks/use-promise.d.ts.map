@@ -1,0 +1,1 @@
+{"version":3,"file":"use-promise.d.ts","sourceRoot":"","sources":["../../src/hooks/use-promise.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EAAE,aAAa,EAAE,cAAc,EAAE,MAAM,UAAU,CAAA;AAO7D,eAAO,MAAM,UAAU,GAAI,CAAC,EAC3B,SAAS,aAAa,CAAC,OAAO,CAAC,CAAC,CAAC,CAAC,KAChC,cAAc,CAAC,CAAC,EAAE,OAAO,CAE3B,CAAA"}

@@ -1,0 +1,32 @@
+import type { ComponentFunction, Falsy, TemplateActionProxy, Truthy } from '../types';
+declare const assign: {
+    <T extends {}, U>(target: T, source: U): T & U;
+    <T extends {}, U, V>(target: T, source1: U, source2: V): T & U & V;
+    <T extends {}, U, V, W>(target: T, source1: U, source2: V, source3: W): T & U & V & W;
+    (target: object, ...sources: any[]): any;
+};
+declare const castArray: <T>(value: T[] | T) => T[];
+declare const castError: (exception: unknown) => Error;
+declare const flatten: <T>(arr: T[]) => FlatArray<T, 0 | 1 | 2 | 3 | 4 | 5 | -1 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20>[];
+declare const indexOf: <T>(arr: ArrayLike<unknown>, value: T) => number;
+declare const isArray: (arg: any) => arg is any[];
+declare const isBoolean: (value: unknown) => value is boolean;
+declare const isComponent: (value: unknown) => value is ComponentFunction;
+declare const isError: (value: unknown) => value is Error;
+declare const isFalsy: <T>(value: T) => value is Falsy<T>;
+declare const isFunction: (value: unknown) => value is (...args: any[]) => any;
+declare const isFunctionReactive: (value: Function) => boolean;
+declare const isNil: (value: unknown) => value is null | undefined;
+declare const isNode: (value: unknown) => value is Node;
+declare const isObject: (value: unknown) => value is object;
+declare const isPromise: (value: unknown) => value is Promise<unknown>;
+declare const isString: (value: unknown) => value is string;
+declare const isSVG: (value: Element) => value is SVGElement;
+declare const isSVGElement: (element: string) => boolean;
+declare const isTemplateAccessor: (value: unknown) => value is TemplateActionProxy;
+declare const isTruthy: <T>(value: T) => value is Truthy<T>;
+declare const isVoidChild: (value: unknown) => value is null | undefined | symbol | boolean;
+declare const noop: () => void;
+declare const once: <T>(fn: () => T) => (() => T);
+export { assign, castArray, castError, flatten, indexOf, isArray, isBoolean, isComponent, isError, isFalsy, isFunction, isFunctionReactive, isNil, isNode, isObject, isPromise, isString, isSVG, isSVGElement, isTemplateAccessor, isTruthy, isVoidChild, noop, once, };
+//# sourceMappingURL=lang.d.ts.map

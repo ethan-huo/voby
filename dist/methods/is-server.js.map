@@ -1,0 +1,1 @@
+{"version":3,"file":"is-server.js","sourceRoot":"","sources":["../../src/methods/is-server.ts"],"names":[],"mappings":"AAAA,aAAa;AAEb,MAAM,UAAU,GAAG,CAAC,CAAC,UAAU,CAAC,YAAY,EAAE,QAAQ,EAAE,EAAE,CAAC,KAAK,CAC/D,uEAAuE,CACvE,CAAA;AAED,UAAU;AAEV,MAAM,QAAQ,GAAG,GAAY,EAAE;IAC9B,OAAO,CAAC,UAAU,CAAA;AACnB,CAAC,CAAA;AAED,YAAY;AAEZ,OAAO,EAAE,QAAQ,EAAE,CAAA"}

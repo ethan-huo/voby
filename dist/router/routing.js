@@ -1,0 +1,385 @@
+import { $, useMemo, untrack, createElement, useEffect, useCleanup, useResolved, get, } from '../';
+import { createContext } from '../methods/create-context';
+import { flatten } from '../utils/lang';
+import { normalizeIntegration } from './integration';
+import { createMemoObject, extractSearchParams, invariant, resolvePath, createMatcher, joinPaths, scoreRoute, mergeSearchString, urlDecode, on, expandOptionals, } from './utils';
+const MAX_REDIRECTS = 100;
+const [RouterContextProvider, useRouterContext] = createContext(undefined, 'Router');
+const [RouteContextProvider, useRouteContext] = createContext(undefined, 'Route');
+export { RouterContextProvider, RouteContextProvider };
+export const useRouter = () => invariant(useRouterContext(), 'Make sure your app is wrapped in a <Router />');
+let TempRoute;
+export const useRoute = () => TempRoute || useRouteContext() || useRouter().base;
+export const useResolvedPath = (path) => {
+    const route = useRoute();
+    return useMemo(() => route.resolvePath(get(path())));
+};
+export const useHref = (to) => {
+    const router = useRouter();
+    return useMemo(() => {
+        const to_ = to();
+        return to_ !== undefined ? router.renderPath(to_) : to_;
+    });
+};
+export const useNavigate = () => useRouter().navigatorFactory();
+export const useLocation = () => useRouter().location;
+// export const useIsRouting = () => useRouter().isRouting;
+export const useMatch = (path) => {
+    const location = useLocation();
+    const matcher = useMemo(() => createMatcher(path()));
+    return useMemo(() => matcher()(location.pathname));
+};
+export const useParams = () => useRoute().params;
+export const useRouteData = () => useRoute().data;
+export const useSearchParams = () => {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const setSearchParams = (params, options) => {
+        const searchString = untrack(() => mergeSearchString(location.search, params));
+        navigate(`${location.pathname}${searchString}`, {
+            scroll: false,
+            ...options,
+        });
+    };
+    return [location.query, setSearchParams];
+};
+function asArray(value) {
+    return Array.isArray(value) ? value : [value];
+}
+export function createRoutes(routeDef, base = '', fallback) {
+    const { component, data, children } = routeDef;
+    const isLeaf = !children || (Array.isArray(children) && !children.length);
+    // const path = joinPaths(base, originalPath);
+    // const pattern = isLeaf ? path : path.split('/*', 1)[0];
+    const shared = {
+        key: routeDef,
+        element: component
+            ? () => createElement(component, {})
+            : () => {
+                const { element } = routeDef;
+                return element === undefined && fallback
+                    ? createElement(fallback, {})
+                    : element;
+            },
+        preload: routeDef.component
+            ? component.preload
+            : routeDef.preload,
+        data,
+    };
+    return asArray(routeDef.path).reduce((acc, path) => {
+        for (const originalPath of expandOptionals(path)) {
+            const path = joinPaths(base, originalPath);
+            const pattern = isLeaf ? path : path.split('/*', 1)[0];
+            acc.push({
+                ...shared,
+                originalPath,
+                pattern,
+                matcher: createMatcher(pattern, !isLeaf),
+            });
+        }
+        return acc;
+    }, []);
+}
+export function createBranch(routes, index = 0) {
+    return {
+        routes,
+        score: scoreRoute(routes[routes.length - 1]) * 10000 - index,
+        matcher(location) {
+            const matches = [];
+            for (let i = routes.length - 1; i >= 0; i--) {
+                const route = routes[i];
+                const match = route.matcher(location);
+                if (!match) {
+                    return null;
+                }
+                matches.unshift({
+                    ...match,
+                    route,
+                });
+            }
+            return matches;
+        },
+    };
+}
+export function createBranches(routeDef, base = '', fallback, stack = [], branches = []) {
+    const routeDefs = flatten(asArray(useResolved(routeDef, true))).map((def) => useResolved(def, true));
+    for (let i = 0, len = routeDefs.length; i < len; i++) {
+        const def = routeDefs[i];
+        if (def &&
+            typeof def === 'object' &&
+            Object.prototype.hasOwnProperty.call(def, 'path')) {
+            const routes = createRoutes(def, base, fallback);
+            for (const route of routes) {
+                stack.push(route);
+                if (def.children) {
+                    createBranches(def.children, route.pattern, fallback, stack, branches);
+                }
+                else {
+                    const branch = createBranch([...stack], branches.length);
+                    branches.push(branch);
+                }
+                stack.pop();
+            }
+        }
+    }
+    // Stack will be empty on final return
+    return stack.length
+        ? branches
+        : branches.sort((a, b) => b.score - a.score);
+}
+export function getRouteMatches(branches, location) {
+    for (let i = 0, len = branches.length; i < len; i++) {
+        const match = branches[i].matcher(location);
+        if (match) {
+            return match;
+        }
+    }
+    return [];
+}
+let prevUrl = new URL('http://sar');
+export function createLocation(path, state) {
+    const url = useMemo(() => {
+        const path_ = path();
+        try {
+            const url = new URL(path_, origin);
+            prevUrl = url;
+            return url;
+        }
+        catch (err) {
+            console.error(`Invalid path ${path_}`);
+            return prevUrl;
+        }
+    }, {
+        equals: (a, b) => a?.href === b?.href,
+    });
+    const pathname = useMemo(() => urlDecode(url().pathname));
+    const search = useMemo(() => urlDecode(url().search, true));
+    const hash = useMemo(() => urlDecode(url().hash));
+    const key = useMemo(() => '');
+    return {
+        get pathname() {
+            return pathname();
+        },
+        get search() {
+            return search();
+        },
+        get hash() {
+            return hash();
+        },
+        get state() {
+            return Object.freeze(state());
+        },
+        get key() {
+            return key();
+        },
+        query: createMemoObject(on(search, () => extractSearchParams(url()))),
+    };
+}
+export function createRouterContext(integration, base = '', data, out) {
+    const { signal: [source, setSource], utils = {}, } = normalizeIntegration(integration);
+    const parsePath = utils.parsePath || ((p) => p);
+    const renderPath = utils.renderPath || ((p) => p);
+    const basePath = resolvePath('', base);
+    const output = out
+        ? Object.assign(out, {
+            matches: [],
+            url: undefined,
+        })
+        : undefined;
+    if (basePath === undefined) {
+        throw new Error(`Invalid base path`);
+    }
+    else if (basePath && !source().value) {
+        setSource({ value: basePath, replace: true, scroll: false });
+    }
+    // const [isRouting, start] = useTransition();
+    const reference$ = $(source().value);
+    const state$ = $(source().state);
+    const location = createLocation(reference$, state$);
+    const referrers = [];
+    const baseRoute = {
+        pattern: basePath,
+        params: {},
+        path: () => basePath,
+        outlet: () => null,
+        resolvePath(to) {
+            return resolvePath(basePath, to);
+        },
+    };
+    if (data) {
+        try {
+            TempRoute = baseRoute;
+            baseRoute.data = data({
+                data: undefined,
+                params: {},
+                location,
+                navigate: navigatorFactory(baseRoute),
+            });
+        }
+        finally {
+            TempRoute = undefined;
+        }
+    }
+    function navigateFromRoute(route, to, options) {
+        // Untrack in case someone navigates in an effect - don't want to track `reference` or route paths
+        untrack(() => {
+            if (typeof to === 'number') {
+                if (!to) {
+                    // A delta of 0 means stay at the current location, so it is ignored
+                }
+                else if (utils.go)
+                    utils.go(to);
+                else
+                    console.warn('Router integration does not support relative routing');
+                return;
+            }
+            const { replace, resolve, scroll, state: nextState, } = {
+                replace: false,
+                resolve: true,
+                scroll: true,
+                ...options,
+            };
+            const resolvedTo = resolve ? route.resolvePath(to) : resolvePath('', to);
+            if (resolvedTo === undefined) {
+                throw new Error(`Path '${to}' is not a routable path`);
+            }
+            else if (referrers.length >= MAX_REDIRECTS) {
+                throw new Error('Too many redirects');
+            }
+            const current = reference$();
+            if (resolvedTo !== current || nextState !== state$()) {
+                const len = referrers.push({
+                    value: current,
+                    replace,
+                    scroll,
+                    state: state$(),
+                });
+                // start(() => {
+                reference$(resolvedTo);
+                state$(nextState);
+                // resetErrorBoundaries();
+                // }).then(() => {
+                if (referrers.length === len) {
+                    navigateEnd({
+                        value: resolvedTo,
+                        state: nextState,
+                    });
+                }
+                // });
+            }
+        });
+    }
+    function navigatorFactory(route) {
+        // Workaround for vite issue (https://github.com/vitejs/vite/issues/3803)
+        route = route || useRouteContext() || baseRoute;
+        return (to, options) => route && navigateFromRoute(route, to, options);
+    }
+    function navigateEnd(next) {
+        const first = referrers[0];
+        if (first) {
+            if (next.value !== first.value || next.state !== first.state) {
+                setSource({
+                    ...next,
+                    replace: first.replace,
+                    scroll: first.scroll,
+                });
+            }
+            referrers.length = 0;
+        }
+    }
+    useEffect(() => {
+        const { value, state } = source();
+        untrack(() => {
+            if (value !== reference$()) {
+                // start(() => {
+                reference$(value);
+                state$(state);
+                // });
+            }
+        });
+    });
+    function handleAnchorClick(evt) {
+        if (evt.defaultPrevented ||
+            evt.button !== 0 ||
+            evt.metaKey ||
+            evt.altKey ||
+            evt.ctrlKey ||
+            evt.shiftKey)
+            return;
+        const a = evt
+            .composedPath()
+            .find((el) => el instanceof Node && el.nodeName.toUpperCase() === 'A');
+        if (!a || !a.hasAttribute('link'))
+            return;
+        const href = a.href;
+        if (a.target || (!href && !a.hasAttribute('state')))
+            return;
+        const rel = (a.getAttribute('rel') || '').split(/\s+/);
+        if (a.hasAttribute('download') || (rel && rel.includes('external')))
+            return;
+        const url = new URL(href);
+        const pathname = urlDecode(url.pathname);
+        if (url.origin !== window.location.origin ||
+            (basePath &&
+                pathname &&
+                !pathname.toLowerCase().startsWith(basePath.toLowerCase())))
+            return;
+        const to = parsePath(pathname + urlDecode(url.search, true) + urlDecode(url.hash));
+        const state = a.getAttribute('state');
+        evt.preventDefault();
+        navigateFromRoute(baseRoute, to, {
+            resolve: false,
+            replace: a.hasAttribute('replace'),
+            scroll: !a.hasAttribute('noscroll'),
+            state: state && JSON.parse(state),
+        });
+    }
+    document.addEventListener('click', handleAnchorClick);
+    useCleanup(() => document.removeEventListener('click', handleAnchorClick));
+    return {
+        base: baseRoute,
+        out: output,
+        location,
+        // isRouting,
+        renderPath,
+        parsePath,
+        navigatorFactory,
+    };
+}
+export function createRouteContext(router, parent, child, match) {
+    const { base, location, navigatorFactory } = router;
+    const { pattern, element: outlet, preload, data } = match().route;
+    const path = useMemo(() => match().path);
+    const params = createMemoObject(() => match().params);
+    preload?.();
+    const route = {
+        parent,
+        pattern,
+        get child() {
+            return child();
+        },
+        path,
+        params,
+        data: parent.data,
+        outlet,
+        resolvePath(to) {
+            return resolvePath(base.path(), to, path());
+        },
+    };
+    if (data) {
+        try {
+            TempRoute = route;
+            route.data = data({
+                data: parent.data,
+                params,
+                location,
+                navigate: navigatorFactory(route),
+            });
+        }
+        finally {
+            TempRoute = undefined;
+        }
+    }
+    return route;
+}
+//# sourceMappingURL=routing.js.map

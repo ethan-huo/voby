@@ -1,0 +1,1 @@
+{"version":3,"file":"use-animation-loop.js","sourceRoot":"","sources":["../../src/hooks/use-animation-loop.ts"],"names":[],"mappings":"AAAA,YAAY;AAIZ,OAAO,EAAE,YAAY,EAAE,MAAM,wBAAwB,CAAA;AAErD,UAAU;AAEV,MAAM,CAAC,MAAM,gBAAgB,GAAG,CAC/B,QAA+C,EACpC,EAAE;IACb,OAAO,YAAY,CAAC;QACnB,QAAQ;QACR,IAAI,EAAE,IAAI;QACV,MAAM,EAAE,oBAAoB;QAC5B,QAAQ,EAAE,qBAAqB;KAC/B,CAAC,CAAA;AACH,CAAC,CAAA"}

@@ -1,0 +1,1 @@
+{"version":3,"file":"use-timeout.d.ts","sourceRoot":"","sources":["../../src/hooks/use-timeout.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EACX,QAAQ,EACR,QAAQ,EACR,aAAa,EACb,eAAe,EACf,MAAM,UAAU,CAAA;AAOjB,eAAO,MAAM,UAAU,GACtB,UAAU,eAAe,CAAC,QAAQ,CAAC,EACnC,KAAK,aAAa,CAAC,MAAM,CAAC,KACxB,QAOF,CAAA"}
