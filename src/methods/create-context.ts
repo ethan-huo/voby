@@ -3,7 +3,7 @@
 import type { Child } from '../types'
 
 import { resolve } from '../methods/resolve'
-import { context } from '../oby'
+import { context, tryCatch } from '../oby'
 import { castError, isFunction, isNil } from '../utils/lang'
 
 /* MAIN */
@@ -31,7 +31,13 @@ function createContext<T extends {}, P = {}>(
 		children: Child
 	}): Child => {
 		return context({ [symbol]: value }, () => {
-			return resolve(children)
+			const label = contextName
+				? `${contextName}Provider error`
+				: 'Context Provider error'
+			const wrapped = tryCatch(children, ({ error }) => {
+				return `${label}: ${error.message}`
+			})
+			return resolve(wrapped)
 		})
 	}
 

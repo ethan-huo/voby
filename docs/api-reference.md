@@ -105,7 +105,8 @@ const [Provider, useTheme] = createContext<{ theme: Observable<string> }>();
 // Note: context values must be non-null. If you need "empty" state, wrap it:
 // value={{ user: null }}
 
-// If init throws, Provider renders an error message instead of children.
+// Provider wraps children with an error boundary.
+// If init or render throws, it renders the error message instead of children.
 ```
 
 ### `createElement` / `h`
